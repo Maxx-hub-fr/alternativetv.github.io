@@ -1,24 +1,388 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Player</title>
-</head>
-<body style="margin:0; background:black;">
-  <video id="video" controls autoplay style="width:100%; height:100%;"></video>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ORPHEUS / ORBITAL INTERFACE</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    const video = document.getElementById('video');
-    const stream = "http://altnative.duckdns.org:8409/iptv/channels.m3u";
-
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(stream);
-      hls.attachMedia(video);
-    } else {
-      video.src = stream;
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: monospace;
     }
-  </script>
+
+    body {
+      background: #000;
+      color: #d8fff3;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .grid {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at center, rgba(0,255,180,0.12), transparent 60%),
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: auto, 42px 42px, 42px 42px;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 2;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 40px;
+      letter-spacing: 0.35em;
+      color: #a8ffe7;
+    }
+
+    .sub {
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      opacity: 0.6;
+      margin-top: 6px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      margin-top: 22px;
+    }
+
+    .panel {
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(255,255,255,0.02);
+      backdrop-filter: blur(10px);
+    }
+
+    .radar {
+      width: min(70vw, 340px);
+      height: min(70vw, 340px);
+      border-radius: 50%;
+      border: 1px solid rgba(0,255,180,0.25);
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(0,255,180,0.15);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .r1 { width: 80px; height: 80px; }
+    .r2 { width: 160px; height: 160px; }
+    .r3 { width: 250px; height: 250px; }
+
+    .sweep {
+      position: absolute;
+      width: 2px;
+      height: 170px;
+      background: linear-gradient(to top, #00ffb4, transparent);
+      left: 50%;
+      top: 50%;
+      transform-origin: bottom;
+      box-shadow: 0 0 18px #00ffb4;
+    }
+
+    .sat {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #00ffb4;
+      box-shadow: 0 0 14px #00ffb4;
+    }
+
+    .map {
+      height: 220px;
+      position: relative;
+      border-radius: 12px;
+      border: 1px solid rgba(0,255,180,0.15);
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(0,255,180,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,180,0.05) 1px, transparent 1px),
+        radial-gradient(circle at center, rgba(0,255,180,0.08), transparent 70%),
+        #041412;
+      background-size: 24px 24px, 24px 24px, auto, auto;
+    }
+
+    .map svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.7;
+    }
+
+    .map path {
+      fill: rgba(0,255,180,0.08);
+      stroke: rgba(120,255,220,0.8);
+      stroke-width: 0.8;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .map::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(0,255,180,0.04) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(0,255,180,0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+    }
+
+    .world-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #00ffb4;
+      box-shadow: 0 0 12px #00ffb4;
+    }
+
+    .log {
+      font-size: 12px;
+      opacity: 0.9;
+      border-left: 1px solid rgba(0,255,180,0.4);
+      padding-left: 10px;
+      margin: 6px 0;
+    }
+
+    .warn {
+      color: #ff6b6b;
+    }
+
+    .ok {
+      color: #7fffd4;
+    }
+
+    footer {
+      margin-top: 18px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 12px;
+      font-size: 11px;
+      opacity: 0.5;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="grid"></div>
+
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>ORPHEUS</h1>
+    <div class="sub">AUTONOMOUS ORBITAL LISTENING NODE</div>
+  </div>
+  <div class="sub" id="time"></div>
+</header>
+
+<div class="layout">
+
+  <!-- RADAR -->
+  <div class="panel">
+    <div class="radar" id="radar">
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <div class="ring r3"></div>
+
+      <div class="sweep" id="sweep"></div>
+      <div class="sat" id="sat"></div>
+    </div>
+  </div>
+
+  <!-- DATA -->
+  <div class="panel">
+
+    <div class="sub">SYSTEM STATUS</div>
+    <div id="status" class="ok">STABLE LINK</div>
+
+    <div class="sub" style="margin-top:12px;">SPACE WEATHER</div>
+    <div id="weather">CALIBRATING...</div>
+
+    <div class="sub" style="margin-top:12px;">ORBITAL VELOCITY</div>
+    <div id="velocity">7.4 KM/S • 26,640 KM/H</div>
+
+    <div class="sub" style="margin-top:12px;">WORLD TRACK</div>
+    <div class="map" id="map">
+      <svg viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
+        <path d="M149 129l25-9 21 8 18-8 18 11 5 20 12 6 8 15-10 20-18 4-12 18-23 2-12-8-17 4-10-16-19-4-5-18-11-14 7-20 13-11z"/>
+        <path d="M312 104l35 6 31-8 22 10 29 5 18 20 10 24-16 18-35 3-22 12-14 28-26 4-19-10-25 5-14-20-17-5-8-20 10-18 20-12z"/>
+        <path d="M540 122l42-10 33 6 27-4 42 11 24 18 15 24-8 18-26 6-24 14-20 18-28 5-19-8-16-14-25-2-18-18 4-26 11-16z"/>
+        <path d="M752 146l28-5 32 10 25 18 18 26-6 24-22 12-26 8-18 18-24 2-18-12-6-28 8-20-10-16z"/>
+        <path d="M452 280l26-10 18 5 12 20-8 26-14 20-24 6-18-14-4-22 12-20z"/>
+        <path d="M790 320l22-6 18 8 10 20-8 22-20 10-22-4-12-18 12-24z"/>
+      </svg>
+      <div class="world-dot" id="dot"></div>
+    </div>
+
+    <div class="sub" style="margin-top:12px;">EVENT LOG</div>
+    <div id="logs"></div>
+
+  </div>
+
+</div>
+
+<footer>
+  <div>SOFT ARG MODE ACTIVE</div>
+  <div>ORPHEUS NETWORK v1.7</div>
+</footer>
+
+</div>
+
+<!-- AUDIO (à remplir par toi) -->
+<audio id="a1" src="orpheus_voice_01.mp3"></audio>
+<audio id="a2" src="orpheus_voice_02.mp3"></audio>
+<audio id="a3" src="orpheus_voice_03.mp3"></audio>
+<audio id="a4" src="orpheus_voice_04.mp3"></audio>
+<audio id="a5" src="orpheus_voice_05.mp3"></audio>
+
+<script>
+
+const sat = document.getElementById('sat');
+const sweep = document.getElementById('sweep');
+const dot = document.getElementById('dot');
+const logs = document.getElementById('logs');
+const weatherEl = document.getElementById('weather');
+const velocityEl = document.getElementById('velocity');
+const statusEl = document.getElementById('status');
+
+let angle = 0;
+let satAngle = Math.random() * 360;
+
+// ---------- TIME ----------
+setInterval(() => {
+  document.getElementById('time').textContent = new Date().toUTCString();
+}, 1000);
+
+// ---------- RADAR LOOP ----------
+function loop() {
+  angle += 0.6;
+  sweep.style.transform = `translateX(-50%) translateY(-100%) rotate(${angle}deg)`;
+
+  satAngle += 0.025;
+  const rad = satAngle * Math.PI / 180;
+
+  const x = Math.cos(rad) * 110;
+  const y = Math.sin(rad) * 110;
+
+  sat.style.left = `calc(50% + ${x}px)`;
+  sat.style.top = `calc(50% + ${y}px)`;
+
+  dot.style.left = `${50 + x/6}%`;
+  dot.style.top = `${50 + y/6}%`;
+
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ---------- ORBITAL VELOCITY ----------
+
+let velocityKms = 7.4;
+let velocityKmh = Math.round(velocityKms * 3600);
+
+function updateVelocity() {
+  const variation = (Math.random() * 0.08 - 0.04);
+  velocityKms = Math.max(7.2, Math.min(7.6, velocityKms + variation));
+  velocityKmh = Math.round(velocityKms * 3600);
+
+  velocityEl.textContent = `${velocityKms.toFixed(2)} KM/S • ${velocityKmh.toLocaleString()} KM/H`;
+}
+
+setInterval(updateVelocity, 12000);
+updateVelocity();
+
+// ---------- SPACE WEATHER ----------
+const weatherStates = [
+  "LOW SOLAR ACTIVITY",
+  "MODERATE MAGNETIC FLUX",
+  "HIGH BACKGROUND NOISE",
+  "IONOSPHERIC DISTURBANCE"
+];
+
+setInterval(() => {
+  const w = weatherStates[Math.floor(Math.random()*weatherStates.length)];
+  weatherEl.textContent = w;
+}, 8000);
+
+// ---------- ANOMALIES ----------
+const anomalyTexts = [
+  "minor signal drift detected",
+  "packet delay fluctuation",
+  "unusual orbital echo",
+  "weak external interference"
+];
+
+function log(msg, type="ok") {
+  const d = document.createElement('div');
+  d.className = `log ${type}`;
+  d.textContent = `[${new Date().toUTCString()}] ${msg}`;
+  logs.prepend(d);
+
+  if(logs.children.length > 8) logs.removeChild(logs.lastChild);
+}
+
+setInterval(() => {
+  if(Math.random() < 0.35) {
+    const msg = anomalyTexts[Math.floor(Math.random()*anomalyTexts.length)];
+    log("ANOMALY // " + msg, "warn");
+    statusEl.textContent = "DEGRADED SIGNAL";
+
+    setTimeout(() => {
+      statusEl.textContent = "STABLE LINK";
+    }, 4000);
+
+    // optional audio trigger
+    const audios = [a1,a2,a3,a4,a5];
+    const a = audios[Math.floor(Math.random()*audios.length)];
+    a.volume = 0.5;
+    a.play().catch(()=>{});
+  } else {
+    log("telemetry packet received");
+  }
+}, 6000);
+
+// ---------- INIT ----------
+log("system initialized");
+log("orbital tracking engaged");
+
+</script>
+
 </body>
 </html>
