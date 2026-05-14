@@ -46,7 +46,7 @@
       justify-content: space-between;
       align-items: flex-start;
       border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 16px;
+      padding-bottom: 28px;
     }
 
     h1 {
@@ -186,7 +186,7 @@
     .transmission-banner {
       position: absolute;
       left: 50%;
-      top: calc(100% + 14px);
+      top: calc(100% + 2px);
       transform: translateX(-50%) translateY(-6px);
       background: rgba(0,255,180,0.08);
       border: 1px solid rgba(0,255,180,0.25);
@@ -398,9 +398,28 @@ function playTransmission(audioId) {
   };
 }
 
-setTimeout(() => {
-  playTransmission('a5');
-}, 4000);
+// ---------- AUDIO UNLOCK SYSTEM ----------
+
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if(audioUnlocked) return;
+
+  audioUnlocked = true;
+
+  setTimeout(() => {
+    playTransmission('a5');
+  }, 4000);
+
+  document.removeEventListener('click', unlockAudio);
+  document.removeEventListener('touchstart', unlockAudio);
+}
+
+// Browsers block autoplay until user interaction
+// First click/touch unlocks the ORPHEUS audio system
+
+document.addEventListener('click', unlockAudio);
+document.addEventListener('touchstart', unlockAudio);
 
 // ---------- ANOMALIES ----------
 const anomalyTexts = [
