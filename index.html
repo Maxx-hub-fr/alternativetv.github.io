@@ -41,6 +41,7 @@
     }
 
     header {
+      position: relative;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -182,6 +183,31 @@
       color: #7fffd4;
     }
 
+    .transmission-banner {
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 14px);
+      transform: translateX(-50%) translateY(-6px);
+      background: rgba(0,255,180,0.08);
+      border: 1px solid rgba(0,255,180,0.25);
+      color: #a8ffe7;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(10px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      white-space: nowrap;
+      box-shadow: 0 0 18px rgba(0,255,180,0.08);
+    }
+
+    .transmission-banner.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0px);
+    }
+
     footer {
       margin-top: 18px;
       border-top: 1px solid rgba(255,255,255,0.1);
@@ -211,6 +237,9 @@
     <div class="sub">AUTONOMOUS ORBITAL LISTENING NODE</div>
   </div>
   <div class="sub" id="time"></div>
+  <div class="transmission-banner" id="transmissionBanner">
+    INCOMING ORPHEUS TRANSMISSION
+  </div>
 </header>
 
 <div class="layout">
@@ -280,6 +309,7 @@ const sweep = document.getElementById('sweep');
 const dot = document.getElementById('dot');
 const logs = document.getElementById('logs');
 const weatherEl = document.getElementById('weather');
+const transmissionBanner = document.getElementById('transmissionBanner');
 const velocityEl = document.getElementById('velocity');
 const statusEl = document.getElementById('status');
 
@@ -341,6 +371,37 @@ setInterval(() => {
   weatherEl.textContent = w;
 }, 8000);
 
+// ---------- AUDIO + TRANSMISSION BANNER ----------
+
+const audioTexts = {
+  a1: 'ORBITAL INTEGRITY REMAINS STABLE',
+  a2: 'MINOR FLUCTUATION DETECTED IN EXTERNAL FIELD',
+  a3: 'RECALIBRATING SIGNAL PATH',
+  a4: 'UNKNOWN INTERFERENCE ACKNOWLEDGED',
+  a5: 'YOU ARE OBSERVING ORPHEUS // ORPHEUS IS OBSERVING BACK'
+};
+
+function playTransmission(audioId) {
+  const audio = document.getElementById(audioId);
+  if(!audio) return;
+
+  transmissionBanner.textContent = audioTexts[audioId] || 'INCOMING TRANSMISSION';
+  transmissionBanner.classList.add('visible');
+
+  setTimeout(() => {
+    audio.volume = 0.5;
+    audio.play().catch(()=>{});
+  }, 500);
+
+  audio.onended = () => {
+    transmissionBanner.classList.remove('visible');
+  };
+}
+
+setTimeout(() => {
+  playTransmission('a5');
+}, 4000);
+
 // ---------- ANOMALIES ----------
 const anomalyTexts = [
   "minor signal drift detected",
@@ -369,10 +430,9 @@ setInterval(() => {
     }, 4000);
 
     // optional audio trigger
-    const audios = [a1,a2,a3,a4,a5];
-    const a = audios[Math.floor(Math.random()*audios.length)];
-    a.volume = 0.5;
-    a.play().catch(()=>{});
+    const ids = ['a1','a2','a3','a4'];
+    const id = ids[Math.floor(Math.random()*ids.length)];
+    playTransmission(id);
   } else {
     log("telemetry packet received");
   }
